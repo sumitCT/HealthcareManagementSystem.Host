@@ -1,15 +1,47 @@
-const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
+const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
+const mf = require("@angular-architects/module-federation/webpack");
+const path = require("path");
+const share = mf.share;
 
-module.exports = withModuleFederationPlugin({
+const sharedMappings = new mf.SharedMappings();
+sharedMappings.register(
+  path.join(__dirname, 'tsconfig.json'),
+  [/* mapped paths to share */]
+);
 
-  name: 'HealthCareManagementSystem',
-
-  exposes: {
-    './Component': './src/app/app.component.ts',
+module.exports = {
+  output: {
+    uniqueName: "healthCareManagementSystem",
+    publicPath: "auto",
   },
-
-  shared: {
-    ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
+  optimization: {
+    runtimeChunk: false,
   },
+  resolve: {
+    alias: {
+      ...sharedMappings.getAliases(),
+    },
+  },
+  experiments: {
+    outputModule: true,
+  },
+  plugins: [
+    new ModuleFederationPlugin({
+      library: { type: "module" },
+      name: "healthCareManagementSystem", // Name of the host application
+      remotes: {
+        PatientRecords: "PatientRecords@http://localhost:4201/remoteEntry.js",
+        AppointmentScheduling: "AppointmentScheduling@http://localhost:4202/remoteEntry.js",
+      },
+      shared: share({
+        "@angular/core": { singleton: true, strictVersion: true, requiredVersion: "auto" },
+        "@angular/common": { singleton: true, strictVersion: true, requiredVersion: "auto" },
+        "@angular/common/http": { singleton: true, strictVersion: true, requiredVersion: "auto" },
+        "@angular/router": { singleton: true, strictVersion: true, requiredVersion: "auto" },
 
-});
+        ...sharedMappings.getDescriptors(),
+      }),
+    }),
+    sharedMappings.getPlugin(),
+  ],
+};
