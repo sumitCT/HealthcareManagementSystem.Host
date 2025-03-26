@@ -1,7 +1,12 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { SharedDashboardComponent } from './shared-dashboard/shared-dashboard.component';
 
-const routes: Routes = [
+export const routes: Routes = [ // Export the routes constant
+  {
+    path: 'shared-dashboard',
+    component: SharedDashboardComponent,
+  },
   {
     path: 'patient-records',
     loadChildren: () =>
@@ -12,7 +17,7 @@ const routes: Routes = [
     loadChildren: () =>
       import('AppointmentScheduling/Module').then((m) => m.RemoteEntryModule),
   },
-  { path: '', redirectTo: '', pathMatch: 'full' },
+  { path: '', redirectTo: 'shared-dashboard', pathMatch: 'full' },
 ];
 
 @NgModule({
