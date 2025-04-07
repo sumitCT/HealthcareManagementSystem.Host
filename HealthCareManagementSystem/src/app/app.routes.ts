@@ -1,27 +1,18 @@
-import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
-import { SharedDashboardComponent } from './shared-dashboard/shared-dashboard.component';
+import { Routes } from '@angular/router';
 
-export const routes: Routes = [ // Export the routes constant
+export const routes: Routes = [
   {
-    path: 'shared-dashboard',
-    component: SharedDashboardComponent,
+    path: '',
+    loadComponent: () =>
+      import('./home/home.component').then((m) => m.HomeComponent),
   },
   {
-    path: 'patient-records',
+    path: 'patients',
+    loadChildren: () => import('patient-records/Routes').then((m) => m.routes),
+  },
+  {
+    path: 'appointments',
     loadChildren: () =>
-      import('PatientRecords/Module').then((m) => m.RemoteEntryModule),
+      import('appointment-scheduling/Routes').then((m) => m.routes),
   },
-  {
-    path: 'appointment-scheduling',
-    loadChildren: () =>
-      import('AppointmentScheduling/Module').then((m) => m.RemoteEntryModule),
-  },
-  { path: '', redirectTo: 'shared-dashboard', pathMatch: 'full' },
 ];
-
-@NgModule({
-  imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule],
-})
-export class AppRoutingModule {}

@@ -1,22 +1,14 @@
-const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
 
-module.exports = {
-  output: {
-    uniqueName: 'healthcareManagementSystem',
-    publicPath: 'auto',
+module.exports = withModuleFederationPlugin({
+
+  remotes: {
+    "patient-records": "http://localhost:4201/remoteEntry.js",
+    "appointment-scheduling": "http://localhost:4202/remoteEntry.js",
   },
-  plugins: [
-    new ModuleFederationPlugin({
-      name: 'healthcareManagementSystem',
-      remotes: {
-        PatientRecords: 'patientRecords@http://localhost:4201/remoteEntry.js',
-        AppointmentScheduling: 'appointmentScheduling@http://localhost:4202/remoteEntry.js',
-      },
-      shared: {
-        '@angular/core': { singleton: true, strictVersion: true },
-        '@angular/common': { singleton: true, strictVersion: true },
-        '@angular/router': { singleton: true, strictVersion: true },
-      },
-    }),
-  ],
-};
+
+  shared: {
+    ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
+  },
+
+});
