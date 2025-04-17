@@ -11,6 +11,10 @@ export const routes: Routes = [
     loadChildren: () => import('patient-records/Routes').then((m) => m.routes),
   },
   {
+    path: 'demographics',
+    loadChildren: () => import('demographics/Routes').then((m) => m.routes),
+  },
+  {
     path: 'appointments',
     loadChildren: () =>
       import('appointment-scheduling/Routes').then((m) => m.routes),
