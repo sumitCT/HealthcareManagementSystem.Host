@@ -2,44 +2,18 @@ import { Routes } from '@angular/router';
 import { RemoteConfig } from './remote-modules.service';
 import { loadRemoteModule } from '@angular-architects/module-federation';
 
+// Base routes that will always be available
 export const routes: Routes = [
   {
     path: '',
     loadComponent: () =>
       import('./home/home.component').then((m) => m.HomeComponent),
-  },
-  {
-    path: 'patients',
-    loadChildren: () => 
-      loadRemoteModule({
-        type: 'module',
-        remoteEntry: 'http://localhost:4201/remoteEntry.js',
-        exposedModule: './Routes'
-      }).then(m => m.routes)
-  },
-  {
-    path: 'demographics',
-    loadChildren: () => 
-      loadRemoteModule({
-        type: 'module',
-        remoteEntry: 'http://localhost:4203/remoteEntry.js',
-        exposedModule: './Routes'
-      }).then(m => m.routes)
-  },
-  {
-    path: 'appointments',
-    loadChildren: () => 
-      loadRemoteModule({
-        type: 'module',
-        remoteEntry: 'http://localhost:4202/remoteEntry.js',
-        exposedModule: './Routes'
-      }).then(m => m.routes)
-  },
+  }
 ];
 
-// This function will be used to dynamically build routes from the RemoteModulesService
+// Function to build routes from remote module configs
 export function buildRoutes(remotes: RemoteConfig[]): Routes {
-  const routes: Routes = [
+  const dynamicRoutes: Routes = [
     {
       path: '',
       loadComponent: () =>
@@ -49,16 +23,27 @@ export function buildRoutes(remotes: RemoteConfig[]): Routes {
 
   // Add dynamic routes from remote modules
   for (const remote of remotes) {
-    routes.push({
+    // Log the route being added for debugging
+    console.log(`Adding route for path: ${remote.routePath}, remoteEntry: ${remote.remoteEntry}`);
+    
+    dynamicRoutes.push({
       path: remote.routePath,
       loadChildren: () => 
         loadRemoteModule({
           type: 'module',
           remoteEntry: remote.remoteEntry,
           exposedModule: remote.exposedModule
-        }).then(m => m.routes)
+        })
+        .then(m => {
+          console.log(`Successfully loaded remote module for ${remote.routePath}`);
+          return m.routes;
+        })
+        .catch(err => {
+          console.error(`Failed to load remote module for ${remote.routePath}:`, err);
+          throw err;
+        })
     });
   }
 
-  return routes;
+  return dynamicRoutes;
 }
