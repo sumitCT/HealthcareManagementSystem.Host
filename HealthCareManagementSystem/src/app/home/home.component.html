@@ -1,7 +1,8 @@
 <h1>Welcome to HealthCareManagementSystem</h1>
-    <nav>
-      <a routerLink="/patients">Patient Records</a> |
-      <a routerLink="/appointments">Appointment Scheduling</a> |
-      <a routerLink="/demographics">Demographics</a>
-    </nav>
-    <router-outlet></router-outlet>
+<nav>
+  <ng-container *ngFor="let module of remoteModules; let last = last">
+    <a [routerLink]="'/' + module.routePath">{{ module.displayName }}</a>
+    <span *ngIf="!last"> | </span>
+  </ng-container>
+</nav>
+<router-outlet></router-outlet>
