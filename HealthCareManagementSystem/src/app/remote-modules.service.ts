@@ -42,18 +42,23 @@ export class RemoteModulesService {
    * This method fetches manifests from all remote applications
    */
   async initializeRemoteModules(): Promise<void> {
-    // First, add fallback configurations in case remote fetch fails
-    this.addDefaultConfigurations();
-    
     try {
-      // Fetch manifests from all registered remotes using firstValueFrom instead of toPromise()
+      console.log('Starting remote modules initialization');
+      
+      // First, add fallback configurations in case remote fetch fails
+      // This now includes dynamic route discovery
+      await this.addDefaultConfigurations();
+      
+      // Fetch manifests from all registered remotes
       const fetchResults = await firstValueFrom(this.fetchAllRemoteManifests());
       
       if (fetchResults && fetchResults.length > 0) {
-        // Update module registry with fetched configurations
+        // Update module registry with fetched configurations from manifests
         fetchResults.forEach(result => {
           if (result.success && result.manifest) {
             const { remoteName, baseUrl, manifest } = result;
+            console.log(`Updating configuration for ${remoteName} from manifest`);
+            
             this.addRemoteModule(remoteName, {
               remoteEntry: `${baseUrl}/remoteEntry.js`,
               remoteName: manifest.remoteName,
@@ -73,33 +78,91 @@ export class RemoteModulesService {
   }
 
   /**
-   * Add default configurations as fallback
+   * Add default configurations as fallback - with dynamic route discovery
    */
-  private addDefaultConfigurations(): void {
-    // Add default remote modules as fallback
-    this.addRemoteModule('patient-records', {
-      remoteEntry: 'http://localhost:4201/remoteEntry.js',
-      remoteName: 'patient-records',
-      exposedModule: './Routes',
-      displayName: 'Patient Records',
-      routePath: 'patients'
-    });
+  private async addDefaultConfigurations(): Promise<void> {
+    console.log('Setting up default configurations with dynamic route discovery');
+    
+    // Process each remote app in the registry
+    for (const remote of this.remoteRegistry) {
+      try {
+        // Try to load the manifest.json directly first
+        const manifestUrl = `${remote.baseUrl}/assets/manifest.json`;
+        console.log(`Attempting to load manifest from: ${manifestUrl}`);
+        
+        // Use the HttpClient to fetch the manifest
+        const manifest = await firstValueFrom(
+          this.http.get<RemoteManifest>(manifestUrl).pipe(
+            catchError(error => {
+              console.warn(`Could not load manifest for ${remote.name} from ${manifestUrl}`, error);
+              return of(null);
+            })
+          )
+        );
 
-    this.addRemoteModule('demographics', {
-      remoteEntry: 'http://localhost:4203/remoteEntry.js',
-      remoteName: 'demographics',
-      exposedModule: './Routes',
-      displayName: 'Demographics',
-      routePath: 'demographics'
-    });
-
-    this.addRemoteModule('appointment-scheduling', {
-      remoteEntry: 'http://localhost:4202/remoteEntry.js',
-      remoteName: 'appointment-scheduling',
-      exposedModule: './Routes',
-      displayName: 'Appointment Scheduling',
-      routePath: 'appointments'
-    });
+        if (manifest) {
+          // Successfully loaded the manifest
+          console.log(`Loaded manifest for ${remote.name}:`, manifest);
+          
+          this.addRemoteModule(remote.name, {
+            remoteEntry: `${remote.baseUrl}/remoteEntry.js`,
+            remoteName: manifest.remoteName || remote.name,
+            exposedModule: manifest.exposedModule || './Routes',
+            displayName: manifest.displayName || this.formatDisplayName(remote.name),
+            routePath: manifest.routePath || remote.name,
+            version: manifest.version
+          });
+        } else {
+          // Fall back to default naming conventions if manifest loading fails
+          console.log(`Falling back to default configuration for ${remote.name}`);
+          
+          // Apply naming conventions based on the remote name
+          let routePath = remote.name;
+          let displayName = this.formatDisplayName(remote.name);
+          
+          // Special case handling for known remotes
+          if (remote.name === 'patient-records') {
+            routePath = 'patients';
+            displayName = 'Patient Records';
+          } else if (remote.name === 'appointment-scheduling') {
+            routePath = 'appointments';
+            displayName = 'Appointment Scheduling';
+          }
+          
+          this.addRemoteModule(remote.name, {
+            remoteEntry: `${remote.baseUrl}/remoteEntry.js`,
+            remoteName: remote.name,
+            exposedModule: './Routes',
+            displayName: displayName,
+            routePath: routePath
+          });
+        }
+      } catch (error) {
+        console.error(`Error setting up default configuration for ${remote.name}:`, error);
+        
+        // Add basic fallback configuration
+        this.addRemoteModule(remote.name, {
+          remoteEntry: `${remote.baseUrl}/remoteEntry.js`,
+          remoteName: remote.name,
+          exposedModule: './Routes',
+          displayName: this.formatDisplayName(remote.name),
+          routePath: remote.name
+        });
+      }
+    }
+  }
+  
+  /**
+   * Format a technical name into a display name
+   */
+  private formatDisplayName(name: string): string {
+    // Convert camelCase or kebab-case to Title Case with spaces
+    return name
+      .replace(/-/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   /**
